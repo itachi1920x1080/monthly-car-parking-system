@@ -1,4 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from app.db.session import get_db
+from app.routers import auth, users  # Import users router បន្ថែមនៅទីនេះ
 
 app = FastAPI(
     title="Monthly Car Parking Management System API",
@@ -6,9 +10,20 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# បញ្ចូល Routers ទាំងពីរ
+app.include_router(auth.router)
+app.include_router(users.router)
+
 @app.get("/health", tags=["Health Check"])
 async def health_check():
-    """
-    Check if the API server is running successfully.
-    """
+    """Check if the API server is running successfully."""
     return {"status": "ok", "message": "Backend API is running!"}
+
+@app.get("/db-check", tags=["Health Check"])
+def check_db_connection(db: Session = Depends(get_db)):
+    """Test the database connection."""
+    try:
+        result = db.execute(text("SELECT DATABASE();")).scalar()
+        return {"status": "success", "connected_to": result}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}

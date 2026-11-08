@@ -1,13 +1,18 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.session import get_db, engine, SessionLocal
 from app.db.base import Base
 import app.models  # load all models into Base.metadata
 from app.models.user import User, RoleEnum
+from app.models.customer import Customer
+from app.models.parking import ParkingRecord
+from app.models.payment import Payment
 from app.core.security import get_password_hash
 from app.routers import auth, users, customers, parking, payments
+
 
 def init_db():
     """បង្កើត Tables ទាំងអស់ និង Account Admin ដោយស្វ័យប្រវត្តិនៅពេល Server ចាប់ផ្តើមដំណើរការ"""
@@ -32,6 +37,43 @@ def init_db():
                 db.add(new_admin)
                 db.commit()
                 print("✅ គណនី Admin ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ (Username: admin, Password: admin123)")
+            
+            # 3. បង្កើតអតិថិជនគំរូ (Sok Chan) ប្រសិនបើមិនទាន់មាន
+            sample_customer = db.query(Customer).filter(Customer.phone_number == "012345678").first()
+            if not sample_customer:
+                sample_customer = Customer(
+                    first_name="Sok",
+                    last_name="Chan",
+                    phone_number="012345678",
+                    email="sokchan@gmail.com"
+                )
+                db.add(sample_customer)
+                db.commit()
+                db.refresh(sample_customer)
+                print("✅ អតិថិជនគំរូ (Sok Chan) ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ")
+
+            # 4. បង្កើតកំណត់ត្រាបង់ប្រាក់គំរូ ($50) ប្រសិនបើមិនទាន់មាន
+            sample_payment = db.query(Payment).first()
+            if not sample_payment and sample_customer:
+                new_payment = Payment(
+                    customer_id=sample_customer.id,
+                    amount=50.0,
+                    status="Paid"
+                )
+                db.add(new_payment)
+                db.commit()
+                print("✅ កំណត់ត្រាបង់ប្រាក់គំរូ ($50) ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ")
+
+            # 5. បង្កើតកំណត់ត្រាចំណតគំរូ ប្រសិនបើមិនទាន់មាន
+            sample_parking = db.query(ParkingRecord).first()
+            if not sample_parking and sample_customer:
+                new_parking = ParkingRecord(
+                    customer_id=sample_customer.id,
+                    license_plate="2BA-1234"
+                )
+                db.add(new_parking)
+                db.commit()
+                print("✅ កំណត់ត្រាចំណតគំរូ (2BA-1234) ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ")
         finally:
             db.close()
     except Exception as e:
@@ -47,6 +89,20 @@ app = FastAPI(
     description="REST API for the Car Parking Management System",
     version="1.0.0",
     lifespan=lifespan
+)
+
+# កំណត់ CORS Middleware សម្រាប់ Frontend (Vue 3 / Vite)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173", # Port ស្តង់ដាររបស់ Vue 3 (Vite)
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"], # អនុញ្ញាតគ្រប់ Method (GET, POST, PUT, DELETE)
+    allow_headers=["*"], # អនុញ្ញាតគ្រប់ Header ទាំងអស់ (រួមទាំង Authorization Token)
 )
 
 # បញ្ចូល Routers ទាំងអស់

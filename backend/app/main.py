@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.session import get_db
-from app.routers import auth, users  # Import users router បន្ថែមនៅទីនេះ
+from app.routers import auth, users, customers
 
 app = FastAPI(
     title="Monthly Car Parking Management System API",
@@ -13,6 +13,7 @@ app = FastAPI(
 # បញ្ចូល Routers ទាំងពីរ
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(customers.router)
 
 @app.get("/health", tags=["Health Check"])
 async def health_check():

@@ -1,8 +1,13 @@
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine
+from app.db.base import Base
+import app.models  # load all models into Base.metadata
 from app.models.user import User, RoleEnum
 from app.core.security import get_password_hash
 
 def create_superuser():
+    # បង្កើត Tables ទាំងអស់ប្រសិនបើវាមិនទាន់មាននៅក្នុង Database
+    Base.metadata.create_all(bind=engine)
+    
     db = SessionLocal()
     try:
         # ឆែកមើលថាតើមានគណនី admin នេះរួចហើយឬនៅ

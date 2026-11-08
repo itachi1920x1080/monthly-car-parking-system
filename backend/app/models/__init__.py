@@ -1,4 +1,5 @@
 from app.db.base import Base
-from app.models.user import User
-from app.models.customer import Customer
-from app.models.parking import ParkingRecord
+from .user import User, RoleEnum
+from .customer import Customer
+from .parking import ParkingRecord
+from .payment import Payment

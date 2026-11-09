@@ -11,7 +11,7 @@ const newUser = ref({
   username: '',
   email: '',
   password: '',
-  role: 'Staff'
+  role: 'cashier'
 });
 
 const fetchUsers = async () => {
@@ -38,12 +38,22 @@ const createUser = async () => {
       }
     });
     showModal.value = false;
-    newUser.value = { username: '', email: '', password: '', role: 'Staff' };
+    newUser.value = { username: '', email: '', password: '', role: 'cashier' };
     await fetchUsers();
     alert('បង្កើតគណនីអ្នកប្រើប្រាស់ជោគជ័យ!');
   } catch (error) {
-    const msg = error.response?.data?.detail || 'មិនអាចបង្កើតគណនីបានទេ!';
-    alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    let msg = 'មិនអាចបង្កើតគណនីបានទេ!';
+    if (error.response?.data?.detail) {
+      const detail = error.response.data.detail;
+      if (Array.isArray(detail)) {
+        msg = detail.map(d => d.msg || JSON.stringify(d)).join('\n');
+      } else if (typeof detail === 'string') {
+        msg = detail;
+      } else {
+        msg = JSON.stringify(detail);
+      }
+    }
+    alert(msg);
   }
 };
 
@@ -166,10 +176,10 @@ onMounted(() => {
                 <td class="px-6 py-4 text-gray-600">{{ user.email }}</td>
                 <td class="px-6 py-4">
                   <span 
-                    class="px-2.5 py-1 rounded-full text-xs font-bold"
-                    :class="user.role === 'Admin' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'"
+                    class="px-2.5 py-1 rounded-full text-xs font-bold capitalize"
+                    :class="user.role?.toLowerCase() === 'admin' ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200'"
                   >
-                    {{ user.role }}
+                    {{ user.role?.toLowerCase() === 'admin' ? 'Admin (អ្នកគ្រប់គ្រង)' : 'Cashier / Staff (បេឡា/បុគ្គលិក)' }}
                   </span>
                 </td>
                 <td class="px-6 py-4">
@@ -208,8 +218,8 @@ onMounted(() => {
           <div>
             <label class="block text-xs font-semibold text-gray-700 mb-1">Role (តួនាទី)</label>
             <select v-model="newUser.role" class="w-full p-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:ring-primary focus:border-primary">
-              <option value="Staff">Staff (បុគ្គលិក)</option>
-              <option value="Admin">Admin (អ្នកគ្រប់គ្រង)</option>
+              <option value="cashier">Cashier / Staff (បេឡា/បុគ្គលិក)</option>
+              <option value="admin">Admin (អ្នកគ្រប់គ្រង)</option>
             </select>
           </div>
           <div class="flex justify-end gap-3 pt-4">

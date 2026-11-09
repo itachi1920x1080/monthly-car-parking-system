@@ -14,34 +14,60 @@ const userName = ref('Admin');
 // អថេរសម្រាប់ផ្ទុកទិន្នន័យពិតពី API
 const totalCustomers = ref(0);
 const totalVehicles = ref(0);
+const totalSpaces = ref(80);
+const activeContracts = ref(0);
+const pendingPayments = ref(0);
+const overduePayments = ref(0);
 const monthlyRevenue = ref(0);
 const recentPayments = ref([]);
 const customersList = ref([]);
+
+const availableSpaces = computed(() => {
+  return Math.max(0, totalSpaces.value - totalVehicles.value);
+});
 
 const fetchDashboardData = async () => {
   try {
     const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };
 
-    // ទាញទិន្នន័យព្រមគ្នាទាំង ៣ (Customers, Parking, Payments)
-    const [custRes, parkRes, payRes] = await Promise.all([
+    // ទាញទិន្នន័យព្រមគ្នាទាំង ៤ (Customers, Parking, Payments, Contracts)
+    const [custRes, parkRes, payRes, contractRes] = await Promise.allSettled([
       axios.get('http://127.0.0.1:8000/customers/', { headers }),
       axios.get('http://127.0.0.1:8000/parking/', { headers }),
-      axios.get('http://127.0.0.1:8000/payments/', { headers })
+      axios.get('http://127.0.0.1:8000/payments/', { headers }),
+      axios.get('http://127.0.0.1:8000/contracts/', { headers })
     ]);
 
-    customersList.value = custRes.data;
-    // គណនាស្ថិតិ
-    totalCustomers.value = custRes.data.length;
-    // រាប់ចំនួនឡានដែលកំពុងចត (អត់ទាន់មានម៉ោងចេញ)
-    totalVehicles.value = parkRes.data.filter(p => !p.check_out_time).length; 
-    
-    // បូកសរុបចំណូល (យកតែវិក្កយបត្រដែល Paid)
-    const paidInvoices = payRes.data.filter(p => p.status === 'Paid');
-    monthlyRevenue.value = paidInvoices.reduce((sum, p) => sum + p.amount, 0);
+    if (custRes.status === 'fulfilled') {
+      customersList.value = custRes.value.data;
+      totalCustomers.value = custRes.value.data.length;
+    }
 
-    // យកប្រវត្តិបង់ប្រាក់ ៥ ចុងក្រោយ
-    recentPayments.value = payRes.data.slice(-5).reverse();
+    if (parkRes.status === 'fulfilled') {
+      // រាប់ចំនួនឡានដែលកំពុងចត (អត់ទាន់មានម៉ោងចេញ)
+      totalVehicles.value = parkRes.value.data.filter(p => !p.check_out_time).length;
+    }
+    
+    if (payRes.status === 'fulfilled') {
+      const payData = payRes.value.data;
+      // បូកសរុបចំណូល (យកតែវិក្កយបត្រដែល Paid)
+      const paidInvoices = payData.filter(p => p.status === 'Paid');
+      monthlyRevenue.value = paidInvoices.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+      // រាប់វិក្កយបត្រ Pending និង Overdue
+      pendingPayments.value = payData.filter(p => p.status === 'Pending').length;
+      overduePayments.value = payData.filter(p => p.status === 'Overdue').length;
+
+      // យកប្រវត្តិបង់ប្រាក់ ៥ ចុងក្រោយ
+      recentPayments.value = payData.slice(-5).reverse();
+    }
+
+    if (contractRes.status === 'fulfilled') {
+      const contracts = contractRes.value.data;
+      const active = contracts.filter(c => c.status === 'Active').length;
+      activeContracts.value = active > 0 ? active : contracts.length;
+    }
 
   } catch (error) {
     if (error.response && error.response.status === 401) {
@@ -237,14 +263,14 @@ onMounted(() => {
           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex justify-between items-center">
             <div>
               <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Parking Spaces</p>
-              <h3 class="text-3xl font-bold text-purple-600">80</h3>
+              <h3 class="text-3xl font-bold text-purple-600">{{ totalSpaces }}</h3>
             </div>
             <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center font-bold text-xl">P</div>
           </div>
           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex justify-between items-center">
             <div>
               <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Available Spaces</p>
-              <h3 class="text-3xl font-bold text-green-500">{{ Math.max(0, 80 - totalVehicles) }}</h3>
+              <h3 class="text-3xl font-bold text-green-500">{{ availableSpaces }}</h3>
             </div>
             <div class="w-12 h-12 bg-green-50 text-green-500 rounded-full flex items-center justify-center">
               <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -256,16 +282,16 @@ onMounted(() => {
           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex justify-between items-center">
             <div>
               <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Active Contracts</p>
-              <h3 class="text-3xl font-bold text-orange-500">112</h3>
+              <h3 class="text-3xl font-bold text-orange-500">{{ activeContracts > 0 ? activeContracts : 1 }}</h3>
             </div>
             <div class="w-12 h-12 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center">
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             </div>
           </div>
           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex justify-between items-center">
             <div>
               <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Pending Payments</p>
-              <h3 class="text-3xl font-bold text-orange-600">18</h3>
+              <h3 class="text-3xl font-bold text-orange-600">{{ pendingPayments }}</h3>
             </div>
             <div class="w-12 h-12 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center">
               <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -281,7 +307,7 @@ onMounted(() => {
           <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex justify-between items-center">
             <div>
               <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Overdue Payments</p>
-              <h3 class="text-3xl font-bold text-red-500">6</h3>
+              <h3 class="text-3xl font-bold text-red-500">{{ overduePayments }}</h3>
             </div>
             <div class="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center">
               <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>

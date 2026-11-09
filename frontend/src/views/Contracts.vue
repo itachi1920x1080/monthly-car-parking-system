@@ -17,6 +17,7 @@ const newContract = ref({
   status: 'Active'
 });
 
+// ទាញយកបញ្ជីអតិថិជនដើម្បីបង្ហាញឈ្មោះ
 const fetchCustomers = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -34,24 +35,23 @@ const getCustomerName = (customerId) => {
   return found ? `${found.last_name} ${found.first_name}` : `CUS-${customerId}`;
 };
 
+// ទាញយកទិន្នន័យពិតពី Database
 const fetchContracts = async () => {
   try {
     const token = localStorage.getItem('token');
-    // សាកល្បងហៅ API (បើថ្ងៃមុខយើងមាន Backend សម្រាប់វា)
     const response = await axios.get('http://127.0.0.1:8000/contracts/', {
       headers: { Authorization: `Bearer ${token}` }
     });
     contracts.value = response.data;
   } catch (error) {
-    // ដោយសារពេលនេះយើងអត់ទាន់មាន Backend API, យើងក្លែងធ្វើទិន្នន័យបង្ហាញសិន
-    contracts.value = [
-      { id: 1, customer_id: 1, space_id: 'A-01', start_date: '2026-11-01', end_date: '2027-11-01', status: 'Active' },
-      { id: 2, customer_id: 2, space_id: 'B-12', start_date: '2026-05-15', end_date: '2026-11-15', status: 'Expired' },
-      { id: 3, customer_id: 3, space_id: 'A-05', start_date: '2026-11-08', end_date: '2027-11-08', status: 'Active' }
-    ];
+    if (error.response && error.response.status === 401) {
+      alert("សោររបស់អ្នកផុតកំណត់ហើយ! សូម Login ម្តងទៀត។");
+      handleLogout();
+    }
   }
 };
 
+// បញ្ជូនទិន្នន័យទៅរក្សាទុកក្នុង MySQL
 const createContract = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -62,18 +62,20 @@ const createContract = async () => {
       end_date: newContract.value.end_date,
       status: newContract.value.status
     }, {
-      headers: {
+      headers: { 
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
-
+    
     showModal.value = false;
     newContract.value = { customer_id: '', space_id: '', start_date: '', end_date: '', status: 'Active' };
+    
+    // Refresh តារាង
     await fetchContracts();
-    alert("បង្កើតកិច្ចសន្យាថ្មីបានជោគជ័យ!");
+    alert("បង្កើតកិច្ចសន្យាថ្មីបានជោគជ័យ និងរក្សាទុកក្នុង Database រួចរាល់!");
   } catch (error) {
-    const msg = error.response?.data?.detail || "មានបញ្ហាក្នុងការបង្កើតកិច្ចសន្យា! សូមប្រាកដថាលេខអតិថិជននេះពិតជាមានក្នុងប្រព័ន្ធ។";
+    const msg = error.response?.data?.detail || "មានបញ្ហា! សូមប្រាកដថាលេខអតិថិជននេះពិតជាមានក្នុងប្រព័ន្ធមែន។";
     alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
   }
 };
@@ -107,7 +109,6 @@ onMounted(() => {
         </div>
       </div>
       
-      <!-- ប្រើប្រាស់ active-class ដើម្បីឲ្យវាភ្លឺស្វ័យប្រវត្តិ ពេលចុចម៉ឺនុយណាមួយ -->
       <nav class="flex-1 px-4 py-4 space-y-1.5 overflow-y-auto mt-4 text-sm font-medium">
         <router-link to="/dashboard" active-class="bg-white/10 text-white" class="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-white/5 hover:text-white rounded-xl transition-colors">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
@@ -121,7 +122,6 @@ onMounted(() => {
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12.5M8 7v8.5A2.5 2.5 0 0010.5 18h3.8M8 7l-4.5 4.5M20.5 7v11M16 11h4.5M16 14.5h4.5" /></svg>
           Vehicles
         </router-link>
-        <!-- មឺនុយ Contracts ថ្មី -->
         <router-link to="/contracts" active-class="bg-white/10 text-white" class="flex items-center gap-3 px-4 py-3 text-gray-300 hover:bg-white/5 hover:text-white rounded-xl transition-colors">
           <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
           Contracts
@@ -144,16 +144,10 @@ onMounted(() => {
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden relative">
       <header class="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-8 z-10">
-        <div class="flex items-center gap-4">
-          <h2 class="text-xl font-bold text-gray-800">Contracts Management</h2>
-          <span class="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full font-medium">Monthly Leases</span>
-        </div>
+        <h2 class="text-xl font-bold text-gray-800">Contracts Management</h2>
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold shadow-sm">A</div>
-          <div>
-            <p class="text-sm font-bold text-gray-700 leading-tight">{{ userName }}</p>
-            <p class="text-xs text-gray-500">Administrator</p>
-          </div>
+          <span class="font-bold text-gray-700">{{ userName }}</span>
         </div>
       </header>
 
@@ -183,6 +177,9 @@ onMounted(() => {
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
+                <tr v-if="contracts.length === 0">
+                  <td colspan="6" class="px-6 py-8 text-center text-gray-400">មិនទាន់មានកិច្ចសន្យានៅឡើយទេ...</td>
+                </tr>
                 <tr v-for="contract in contracts" :key="contract.id" class="hover:bg-gray-50/80 transition-colors">
                   <td class="px-6 py-4 font-bold font-mono text-gray-900">#CT-{{ contract.id.toString().padStart(3, '0') }}</td>
                   <td class="px-6 py-4 font-medium text-gray-700">
@@ -199,7 +196,7 @@ onMounted(() => {
                     </span>
                     <span v-else class="inline-flex items-center gap-1.5 px-3 py-1 bg-red-50 text-red-700 rounded-full text-xs font-bold border border-red-200">
                       <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                      Expired
+                      {{ contract.status }}
                     </span>
                   </td>
                 </tr>
@@ -230,11 +227,11 @@ onMounted(() => {
           <form @submit.prevent="createContract" class="p-6 space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-1">អតិថិជន</label>
-                <select v-if="customers.length > 0" v-model="newContract.customer_id" required class="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary text-sm bg-white">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">អតិថិជន (Customer)</label>
+                <select v-if="customers.length > 0" v-model.number="newContract.customer_id" required class="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary text-sm bg-white">
                   <option value="" disabled>-- ជ្រើសរើស --</option>
                   <option v-for="c in customers" :key="c.id" :value="c.id">
-                    #{{ c.id }} {{ c.last_name }}
+                    #{{ c.id }} {{ c.last_name }} {{ c.first_name }}
                   </option>
                 </select>
                 <input v-else v-model.number="newContract.customer_id" type="number" required class="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-primary focus:border-primary text-sm" placeholder="លេខ ID">
@@ -274,4 +271,3 @@ onMounted(() => {
     </div>
   </div>
 </template>
-

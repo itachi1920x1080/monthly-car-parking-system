@@ -3,3 +3,4 @@ from .user import User, RoleEnum
 from .customer import Customer
 from .parking import ParkingRecord
 from .payment import Payment
+from .contract import Contract

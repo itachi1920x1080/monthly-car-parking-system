@@ -10,8 +10,9 @@ from app.models.user import User, RoleEnum
 from app.models.customer import Customer
 from app.models.parking import ParkingRecord
 from app.models.payment import Payment
+from app.models.contract import Contract
 from app.core.security import get_password_hash
-from app.routers import auth, users, customers, parking, payments
+from app.routers import auth, users, customers, parking, payments, contract
 
 
 def init_db():
@@ -74,6 +75,21 @@ def init_db():
                 db.add(new_parking)
                 db.commit()
                 print("✅ កំណត់ត្រាចំណតគំរូ (2BA-1234) ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ")
+
+            # 6. បង្កើតកិច្ចសន្យាគំរូ (CT-001) ប្រសិនបើមិនទាន់មាន
+            sample_contract = db.query(Contract).first()
+            if not sample_contract and sample_customer:
+                from datetime import date
+                new_contract = Contract(
+                    customer_id=sample_customer.id,
+                    space_id="A-01",
+                    start_date=date.today(),
+                    end_date=date(date.today().year + 1, date.today().month, date.today().day),
+                    status="Active"
+                )
+                db.add(new_contract)
+                db.commit()
+                print("✅ កិច្ចសន្យាគំរូ (CT-001) ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ")
         finally:
             db.close()
     except Exception as e:
@@ -111,6 +127,7 @@ app.include_router(users.router)
 app.include_router(customers.router)
 app.include_router(parking.router)
 app.include_router(payments.router)
+app.include_router(contract.router)
 
 @app.get("/health", tags=["Health Check"])
 async def health_check():

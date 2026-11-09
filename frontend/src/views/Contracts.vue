@@ -52,21 +52,30 @@ const fetchContracts = async () => {
   }
 };
 
-const createContract = () => {
-  // ក្លែងធ្វើការរក្សាទុកទិន្នន័យ (Mock Save)
-  const fakeId = contracts.value.length + 1;
-  contracts.value.unshift({
-    id: fakeId,
-    customer_id: newContract.value.customer_id,
-    space_id: newContract.value.space_id,
-    start_date: newContract.value.start_date,
-    end_date: newContract.value.end_date,
-    status: newContract.value.status
-  });
-  
-  showModal.value = false;
-  newContract.value = { customer_id: '', space_id: '', start_date: '', end_date: '', status: 'Active' };
-  alert("បង្កើតកិច្ចសន្យាថ្មីបានជោគជ័យ! (បណ្តោះអាសន្ននៅលើ UI)");
+const createContract = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    await axios.post('http://127.0.0.1:8000/contracts/', {
+      customer_id: parseInt(newContract.value.customer_id),
+      space_id: newContract.value.space_id,
+      start_date: newContract.value.start_date,
+      end_date: newContract.value.end_date,
+      status: newContract.value.status
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    showModal.value = false;
+    newContract.value = { customer_id: '', space_id: '', start_date: '', end_date: '', status: 'Active' };
+    await fetchContracts();
+    alert("បង្កើតកិច្ចសន្យាថ្មីបានជោគជ័យ!");
+  } catch (error) {
+    const msg = error.response?.data?.detail || "មានបញ្ហាក្នុងការបង្កើតកិច្ចសន្យា! សូមប្រាកដថាលេខអតិថិជននេះពិតជាមានក្នុងប្រព័ន្ធ។";
+    alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+  }
 };
 
 const handleLogout = () => {

@@ -8,9 +8,13 @@ const payments = ref([]);
 const customers = ref([]);
 const userName = ref('Admin');
 
-// អថេរសម្រាប់គ្រប់គ្រងផ្ទាំង Popup បង់ប្រាក់
+// អថេរសម្រាប់គ្រប់គ្រង Modal និង ជំហានបង់ប្រាក់
 const showModal = ref(false);
+const paymentStep = ref(1); // 1 = បំពេញទិន្នន័យ, 2 = ស្កេន QR Code
+const paymentMethod = ref('Cash'); // Cash ឬ Bank
+const isProcessing = ref(false);
 const isSubmitting = ref(false);
+
 const newPayment = ref({
   customer_id: '',
   amount: 60.00,
@@ -52,13 +56,38 @@ const getCustomerName = (customerId) => {
   return found ? `${found.last_name} ${found.first_name}` : `Customer #${customerId}`;
 };
 
-// បង្កើតការបង់ប្រាក់ថ្មី
-const handleCreatePayment = async () => {
+// អនុគមន៍សម្រាប់ពិនិត្យមើលមុននឹង Save (Cash ឬ Bank)
+const handleProceedPayment = () => {
   if (!newPayment.value.customer_id) {
-    alert("សូមជ្រើសរើស ឬបញ្ចូលលេខអតិថិជន!");
+    alert("សូមជ្រើសរើស ឬបញ្ចូលលេខសម្គាល់អតិថិជន!");
     return;
   }
-  
+  if (!newPayment.value.amount || Number(newPayment.value.amount) <= 0) {
+    alert("សូមបញ្ចូលចំនួនទឹកប្រាក់ដែលត្រឹមត្រូវ!");
+    return;
+  }
+
+  if (paymentMethod.value === 'Bank') {
+    // បើជ្រើសរើស Bank ប្តូរទៅទំព័រទី 2 ដើម្បីបង្ហាញ QR Code
+    paymentStep.value = 2;
+  } else {
+    // បើលុយសុទ្ធ (Cash) រក្សាទុកយកតែម្តង
+    createPayment();
+  }
+};
+
+// អនុគមន៍បញ្ជាក់ថាបានស្កេនរួចរាល់ (Simulate Bank Webhook)
+const confirmBankPayment = () => {
+  isProcessing.value = true;
+  // ក្លែងធ្វើការរង់ចាំធនាគារដំណើរការ 1.5 វិនាទី
+  setTimeout(async () => {
+    await createPayment();
+    isProcessing.value = false;
+  }, 1500);
+};
+
+// អនុគមន៍រក្សាទុកទៅកាន់ Database
+const createPayment = async () => {
   isSubmitting.value = true;
   try {
     const token = localStorage.getItem('token');
@@ -72,20 +101,24 @@ const handleCreatePayment = async () => {
         'Content-Type': 'application/json'
       }
     });
-
+    
+    // Reset ទិន្នន័យពេលជោគជ័យ
     showModal.value = false;
+    paymentStep.value = 1;
     newPayment.value = { customer_id: '', amount: 60.00, status: 'Paid' };
+    paymentMethod.value = 'Cash';
+    
     await fetchPayments();
-    alert("កត់ត្រាការបង់ប្រាក់បានជោគជ័យ!");
+    alert("ទូទាត់ប្រាក់ជោគជ័យ! (Payment Successful)");
   } catch (error) {
-    const msg = error.response?.data?.detail || "មានបញ្ហាក្នុងការកត់ត្រាការបង់ប្រាក់!";
+    const msg = error.response?.data?.detail || "មានបញ្ហា! សូមប្រាកដថាលេខអតិថិជននេះពិតជាមានក្នុងប្រព័ន្ធមែន។";
     alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
   } finally {
     isSubmitting.value = false;
   }
 };
 
-// អនុគមន៍ថ្មី សម្រាប់ទាញយករបាយការណ៍ជា Excel (CSV)
+// អនុគមន៍ទាញយករបាយការណ៍ជា Excel (CSV)
 const exportToCSV = () => {
   if (payments.value.length === 0) {
     alert("មិនមានទិន្នន័យសម្រាប់ទាញយកទេ!");
@@ -104,19 +137,17 @@ const exportToCSV = () => {
     const date = pay.payment_date ? new Date(pay.payment_date).toLocaleString('en-GB') : '';
     const status = pay.status;
     
-    // តភ្ជាប់ជាទម្រង់ CSV
     csvContent += `${id},${cusId},"${cusName}",${amount},"${date}",${status}\n`;
   });
   
-  // ៣. បង្កើតជា File និងបញ្ជាឲ្យ Download
-  // \uFEFF ជួយឲ្យ Excel ស្គាល់អក្សរខ្មែរ (UTF-8 BOM)
+  // ៣. បង្កើតជា File និងបញ្ជាឲ្យ Download (UTF-8 BOM \uFEFF)
   const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   
   const today = new Date().toISOString().split('T')[0];
   link.setAttribute("href", url);
-  link.setAttribute("download", `CarPark_Revenue_Report_${today}.csv`); // ឈ្មោះ File
+  link.setAttribute("download", `CarPark_Revenue_Report_${today}.csv`);
   
   document.body.appendChild(link);
   link.click();
@@ -182,7 +213,7 @@ onMounted(() => {
     </aside>
 
     <!-- ផ្ទៃបង្ហាញព័ត៌មាន (Main Content) -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden relative">
       <!-- Header -->
       <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
         <div class="flex items-center gap-4">
@@ -215,7 +246,7 @@ onMounted(() => {
               Export Report (CSV)
             </button>
 
-            <button @click="showModal = true" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-secondary transition-all flex items-center gap-2 shadow-md shadow-primary/20 text-sm">
+            <button @click="showModal = true; paymentStep = 1" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-secondary transition-all flex items-center gap-2 shadow-md shadow-primary/20 text-sm">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
               + បង្កើតវិក្កយបត្រថ្មី (New Payment)
             </button>
@@ -250,7 +281,7 @@ onMounted(() => {
                     <div class="flex flex-col items-center">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 mb-2 text-gray-300"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>
                       <p>មិនទាន់មានប្រវត្តិបង់ប្រាក់នៅឡើយទេ...</p>
-                      <button @click="showModal = true" class="mt-3 text-xs text-primary font-semibold hover:underline">+ បង្កើតកំណត់ត្រាដំបូង</button>
+                      <button @click="showModal = true; paymentStep = 1" class="mt-3 text-xs text-primary font-semibold hover:underline">+ បង្កើតកំណត់ត្រាដំបូង</button>
                     </div>
                   </td>
                 </tr>
@@ -289,72 +320,134 @@ onMounted(() => {
         </div>
       </main>
 
-      <!-- Modal បង្កើតវិក្កយបត្រថ្មី (Popup) -->
-      <div v-if="showModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border border-gray-100">
+      <!-- Modal បង់ប្រាក់ដែលរួមបញ្ចូល Bank KHQR Code -->
+      <div v-if="showModal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-100">
           
-          <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>
+          <!-- ជំហានទី ១៖ ផ្ទាំងបំពេញព័ត៌មាន -->
+          <div v-if="paymentStep === 1">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/70">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>
+                </div>
+                <div>
+                  <h3 class="text-lg font-bold text-gray-900">ទូទាត់វិក្កយបត្រចំណត</h3>
+                  <p class="text-xs text-gray-500">Record New Monthly Payment</p>
+                </div>
               </div>
-              <div>
-                <h3 class="text-lg font-bold text-gray-900">កត់ត្រាការបង់ប្រាក់</h3>
-                <p class="text-xs text-gray-500">Record New Monthly Payment</p>
-              </div>
+              <button @click="showModal = false" class="text-gray-400 hover:text-red-500 p-1 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
             </div>
-            <button @click="showModal = false" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-lg">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
+
+            <form @submit.prevent="handleProceedPayment" class="p-6 space-y-4">
+              <!-- ជ្រើសរើសអតិថិជន -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">អតិថិជន (Customer)</label>
+                <select v-if="customers.length > 0" v-model="newPayment.customer_id" required class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
+                  <option value="" disabled>-- សូមជ្រើសរើសអតិថិជន --</option>
+                  <option v-for="c in customers" :key="c.id" :value="c.id">
+                    #{{ c.id }} - {{ c.last_name }} {{ c.first_name }} ({{ c.phone_number }})
+                  </option>
+                </select>
+                <input v-else v-model.number="newPayment.customer_id" type="number" required class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" placeholder="បញ្ចូលលេខ ID អតិថិជន (Customer ID)">
+              </div>
+
+              <!-- ចំនួនទឹកប្រាក់ ($) -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">ចំនួនទឹកប្រាក់ (Amount in USD)</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-500 font-bold">$</div>
+                  <input v-model.number="newPayment.amount" type="number" step="0.01" min="0" required class="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-semibold text-gray-800" placeholder="60.00">
+                </div>
+              </div>
+              
+              <!-- ជម្រើសវិធីបង់ប្រាក់ -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">វិធីទូទាត់ប្រាក់ (Payment Method)</label>
+                <div class="grid grid-cols-2 gap-4">
+                  <label class="cursor-pointer">
+                    <input type="radio" v-model="paymentMethod" value="Cash" class="peer sr-only" name="payment">
+                    <div class="rounded-xl border-2 border-gray-200 p-3.5 text-center peer-checked:border-primary peer-checked:bg-green-50/70 hover:bg-gray-50 transition-all">
+                      <span class="block text-xl mb-1">💵</span>
+                      <span class="font-bold text-gray-700 text-sm">Cash (លុយសុទ្ធ)</span>
+                    </div>
+                  </label>
+                  <label class="cursor-pointer">
+                    <input type="radio" v-model="paymentMethod" value="Bank" class="peer sr-only" name="payment">
+                    <div class="rounded-xl border-2 border-gray-200 p-3.5 text-center peer-checked:border-blue-500 peer-checked:bg-blue-50/70 hover:bg-gray-50 transition-all">
+                      <span class="block text-xl mb-1">🏦</span>
+                      <span class="font-bold text-gray-700 text-sm">KHQR / ABA</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- ស្ថានភាព -->
+              <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-1.5">ស្ថានភាព (Payment Status)</label>
+                <select v-model="newPayment.status" class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white font-medium">
+                  <option value="Paid">Paid (បានបង់រួច)</option>
+                  <option value="Pending">Pending (រង់ចាំការបង់)</option>
+                </select>
+              </div>
+
+              <div class="pt-3">
+                <button type="submit" :disabled="isSubmitting" class="w-full bg-primary text-white py-3.5 rounded-xl font-bold text-base hover:bg-secondary transition-colors shadow-lg shadow-primary/25 disabled:opacity-70">
+                  <span v-if="isSubmitting">កំពុងរក្សាទុក...</span>
+                  <span v-else>{{ paymentMethod === 'Bank' ? 'បង្កើត QR សម្រាប់ស្កេន (Generate KHQR)' : 'បញ្ជាក់ការបង់ប្រាក់ (Confirm Payment)' }}</span>
+                </button>
+              </div>
+            </form>
           </div>
 
-          <form @submit.prevent="handleCreatePayment" class="p-6 space-y-4">
-            
-            <!-- ជ្រើសរើសអតិថិជន -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">អតិថិជន (Customer)</label>
-              <select v-if="customers.length > 0" v-model="newPayment.customer_id" required class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white">
-                <option value="" disabled>-- សូមជ្រើសរើសអតិថិជន --</option>
-                <option v-for="c in customers" :key="c.id" :value="c.id">
-                  #{{ c.id }} - {{ c.last_name }} {{ c.first_name }} ({{ c.phone_number }})
-                </option>
-              </select>
-              <input v-else v-model="newPayment.customer_id" type="number" required class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm" placeholder="បញ្ចូលលេខ ID អតិថិជន (Customer ID)">
-              <p class="text-xs text-gray-400 mt-1">ជ្រើសរើសអតិថិជនដែលត្រូវបង់ថ្លៃចំណតប្រចាំខែ</p>
+          <!-- ជំហានទី ២៖ ផ្ទាំង KHQR Code ស្កេនទូទាត់ -->
+          <div v-else-if="paymentStep === 2" class="p-6 flex flex-col items-center">
+            <!-- ABA / KHQR Header -->
+            <div class="w-full bg-[#00557b] text-white p-4 rounded-2xl flex items-center justify-between mb-5 shadow-md">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 bg-red-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">KH</div>
+                <span class="font-bold tracking-wider text-sm">KHQR PAY</span>
+              </div>
+              <span class="font-extrabold text-2xl">${{ Number(newPayment.amount || 0).toFixed(2) }}</span>
             </div>
-
-            <!-- ចំនួនទឹកប្រាក់ ($) -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">ចំនួនទឹកប្រាក់ (Amount in USD)</label>
-              <div class="relative">
-                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400 font-bold">$</div>
-                <input v-model="newPayment.amount" type="number" step="0.01" min="0" required class="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-semibold text-gray-800" placeholder="60.00">
+            
+            <h4 class="text-gray-600 mb-3 text-sm text-center font-medium">សូមស្កេន QR កូដខាងក្រោមដើម្បីបង់ប្រាក់</h4>
+            
+            <!-- Mock QR Code Design -->
+            <div class="bg-white p-4 border-4 border-[#00557b] rounded-2xl mb-4 relative shadow-lg">
+              <!-- SVG QR Code Icon -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-44 h-44 text-gray-800" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v3h-3v-3zm-3 3h3v3h-3v-3zm3 3h3v3h-3v-3zm-3-6h3v3h-3v-3zm-3 3h3v3h-3v-3zm0 3h3v3h-3v-3zm-3-3h3v3h-3v-3zm3 3h3v3h-3v-3z"/>
+              </svg>
+              <!-- កណ្តាល QR មានរូបតំណាង ABA/KH -->
+              <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div class="bg-white p-1 rounded-xl shadow-md border border-gray-200">
+                  <div class="w-9 h-9 bg-[#ea2127] text-white flex items-center justify-center font-extrabold text-xs rounded-lg">KHQR</div>
+                </div>
               </div>
             </div>
 
-            <!-- ស្ថានភាពបង់ប្រាក់ -->
-            <div>
-              <label class="block text-sm font-semibold text-gray-700 mb-1.5">ស្ថានភាព (Payment Status)</label>
-              <select v-model="newPayment.status" class="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm bg-white font-medium">
-                <option value="Paid">Paid (បានបង់រួច)</option>
-                <option value="Pending">Pending (រង់ចាំការបង់)</option>
-              </select>
-            </div>
+            <p class="text-sm font-bold text-gray-800 mb-6">Car Park Management Co., Ltd</p>
 
-            <!-- ប៊ូតុងបញ្ជា -->
-            <div class="pt-4 flex gap-3">
-              <button type="button" @click="showModal = false" class="w-1/2 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition-colors font-medium text-sm">
-                បោះបង់ (Cancel)
+            <div class="w-full flex gap-3">
+              <button @click="paymentStep = 1" :disabled="isProcessing" class="w-1/2 bg-gray-100 text-gray-700 py-3 rounded-xl font-bold hover:bg-gray-200 transition-colors disabled:opacity-50 text-sm">
+                ត្រឡប់ក្រោយ
               </button>
-              <button type="submit" :disabled="isSubmitting" class="w-1/2 py-3 bg-primary text-white rounded-xl hover:bg-secondary transition-colors font-semibold text-sm shadow-lg shadow-primary/25 disabled:opacity-70">
-                <span v-if="isSubmitting">កំពុងរក្សាទុក...</span>
-                <span v-else>កត់ត្រាបង់ប្រាក់</span>
+              <button @click="confirmBankPayment" :disabled="isProcessing" class="w-1/2 bg-[#00557b] text-white py-3 rounded-xl font-bold hover:bg-[#003d59] transition-colors shadow-lg disabled:opacity-70 flex justify-center items-center gap-2 text-sm">
+                <svg v-if="isProcessing" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isProcessing ? 'កំពុងផ្ទៀងផ្ទាត់...' : 'ទូទាត់រួចរាល់' }}
               </button>
             </div>
-          </form>
+          </div>
 
         </div>
       </div>
+      <!-- ចប់ Modal -->
 
     </div>
   </div>

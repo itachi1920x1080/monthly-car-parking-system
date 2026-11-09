@@ -35,7 +35,13 @@ const fetchUsers = async () => {
 const createUser = async () => {
   try {
     const token = localStorage.getItem('token');
-    await axios.post('http://127.0.0.1:8000/users/register', newUser.value, {
+    const payload = {
+      username: newUser.value.username.trim(),
+      email: newUser.value.email.trim(),
+      password: newUser.value.password,
+      role: newUser.value.role || 'cashier'
+    };
+    await axios.post('http://127.0.0.1:8000/users/register', payload, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -44,7 +50,7 @@ const createUser = async () => {
     showModal.value = false;
     newUser.value = { username: '', email: '', password: '', role: 'cashier' };
     await fetchUsers();
-    alert('បង្កើតគណនីអ្នកប្រើប្រាស់ជោគជ័យ!');
+    alert('✅ បង្កើតគណនីអ្នកប្រើប្រាស់បានជោគជ័យ!');
   } catch (error) {
     let msg = 'មិនអាចបង្កើតគណនីបានទេ!';
     if (error.response?.data?.detail) {

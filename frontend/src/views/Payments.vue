@@ -17,9 +17,11 @@ const paymentMethod = ref('Cash'); // Cash ឬ Bank
 const isProcessing = ref(false);
 const isSubmitting = ref(false);
 
+const defaultRate = parseFloat(localStorage.getItem('default_monthly_rate') || '50.0');
+
 const newPayment = ref({
   customer_id: '',
-  amount: 60.00,
+  amount: defaultRate,
   status: 'Paid'
 });
 
@@ -107,7 +109,7 @@ const createPayment = async () => {
     // Reset ទិន្នន័យពេលជោគជ័យ
     showModal.value = false;
     paymentStep.value = 1;
-    newPayment.value = { customer_id: '', amount: 60.00, status: 'Paid' };
+    newPayment.value = { customer_id: '', amount: parseFloat(localStorage.getItem('default_monthly_rate') || '50.0'), status: 'Paid' };
     paymentMethod.value = 'Cash';
     
     await fetchPayments();

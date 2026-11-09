@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from app.models.user import RoleEnum
 
 # ទិន្នន័យមូលដ្ឋានរបស់ User
@@ -11,6 +11,19 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     role: RoleEnum = RoleEnum.CASHIER
+
+    @field_validator('role', mode='before')
+    @classmethod
+    def normalize_role(cls, v):
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            if clean in ("staff", "cashier", "staff (បុគ្គលិក)", "clerk", "teller"):
+                return RoleEnum.CASHIER
+            if clean in ("admin", "administrator"):
+                return RoleEnum.ADMIN
+            if clean in ("customer", "user", "client"):
+                return RoleEnum.CUSTOMER
+        return v
 
 # ទិន្នន័យដែល Backend បញ្ជូនទៅឲ្យ Frontend វិញ (មិនបង្ហាញ Password ទេ)
 class UserResponse(UserBase):

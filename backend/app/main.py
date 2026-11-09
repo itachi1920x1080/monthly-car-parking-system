@@ -12,7 +12,7 @@ from app.models.parking import ParkingRecord
 from app.models.payment import Payment
 from app.models.contract import Contract
 from app.core.security import get_password_hash
-from app.routers import auth, users, customers, parking, payments, contract, parking_space
+from app.routers import auth, users, customers, parking, payments, contract, parking_space, settings as settings_router
 
 
 def init_db():
@@ -161,6 +161,7 @@ app.include_router(parking.router)
 app.include_router(payments.router)
 app.include_router(contract.router)
 app.include_router(parking_space.router)
+app.include_router(settings_router.router)
 
 @app.get("/health", tags=["Health Check"])
 async def health_check():

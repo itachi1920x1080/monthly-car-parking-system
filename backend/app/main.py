@@ -12,7 +12,7 @@ from app.models.parking import ParkingRecord
 from app.models.payment import Payment
 from app.models.contract import Contract
 from app.core.security import get_password_hash
-from app.routers import auth, users, customers, parking, payments, contract
+from app.routers import auth, users, customers, parking, payments, contract, parking_space
 
 
 def init_db():
@@ -38,6 +38,38 @@ def init_db():
                 db.add(new_admin)
                 db.commit()
                 print("✅ គណនី Admin ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ (Username: admin, Password: admin123)")
+
+            # 2.1 បង្កើតគណនី Cashier (បេឡា/បុគ្គលិក) ប្រសិនបើមិនទាន់មាន
+            cashier_user = db.query(User).filter(
+                (User.username == "cashier") | (User.email == "cashier@parking.com")
+            ).first()
+            if not cashier_user:
+                new_cashier = User(
+                    username="cashier",
+                    email="cashier@parking.com",
+                    hashed_password=get_password_hash("cashier123"),
+                    role=RoleEnum.CASHIER,
+                    is_active=True
+                )
+                db.add(new_cashier)
+                db.commit()
+                print("✅ គណនី Cashier ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ (Username: cashier, Password: cashier123)")
+
+            # 2.2 បង្កើតគណនី Customer (អតិថិជន) ប្រសិនបើមិនទាន់មាន
+            customer_user = db.query(User).filter(
+                (User.username == "customer") | (User.email == "customer@parking.com")
+            ).first()
+            if not customer_user:
+                new_customer = User(
+                    username="customer",
+                    email="customer@parking.com",
+                    hashed_password=get_password_hash("customer123"),
+                    role=RoleEnum.CUSTOMER,
+                    is_active=True
+                )
+                db.add(new_customer)
+                db.commit()
+                print("✅ គណនី Customer ត្រូវបានបង្កើតដោយស្វ័យប្រវត្តិ (Username: customer, Password: customer123)")
             
             # 3. បង្កើតអតិថិជនគំរូ (Sok Chan) ប្រសិនបើមិនទាន់មាន
             sample_customer = db.query(Customer).filter(Customer.phone_number == "012345678").first()
@@ -128,6 +160,7 @@ app.include_router(customers.router)
 app.include_router(parking.router)
 app.include_router(payments.router)
 app.include_router(contract.router)
+app.include_router(parking_space.router)
 
 @app.get("/health", tags=["Health Check"])
 async def health_check():

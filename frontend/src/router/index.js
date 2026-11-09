@@ -29,21 +29,40 @@ const router = createRouter({
   ]
 })
 
-// ប្រព័ន្ធការពារសុវត្ថិភាព (Navigation Guard)
+// ប្រព័ន្ធការពារសុវត្ថិភាព និងការបែងចែកសិទ្ធិតាម Role (Navigation Guard)
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
+  const role = (localStorage.getItem('user_role') || 'admin').toLowerCase();
   
   // បើអត់មានសោរ (token) ហើយចង់ទៅទំព័រផ្សេងក្រៅពី Login ត្រូវបញ្ជូនទៅ Login វិញ
   if (to.name !== 'Login' && !token) {
     next({ name: 'Login' });
+    return;
   } 
   // បើមានសោរហើយ តែចង់ទៅទំព័រ Login ម្តងទៀត ត្រូវបញ្ជូនទៅ Dashboard តែម្តង
-  else if (to.name === 'Login' && token) {
+  if (to.name === 'Login' && token) {
     next({ name: 'Dashboard' });
+    return;
   } 
-  else {
-    next();
+
+  // បែងចែកសិទ្ធិប្រើប្រាស់តាម Role ជាក់ស្តែង (RBAC)
+  if (role === 'customer') {
+    const customerAllowed = ['Login', 'Dashboard', 'ParkingSpaces', 'Contracts', 'Payments', 'Notifications'];
+    if (!customerAllowed.includes(to.name)) {
+      alert("ទំព័រនេះសម្រាប់តែ Administrator និង Cashier ប៉ុណ្ណោះ!");
+      next({ name: 'Dashboard' });
+      return;
+    }
+  } else if (role === 'cashier') {
+    const cashierForbidden = ['Users', 'Settings'];
+    if (cashierForbidden.includes(to.name)) {
+      alert("ទំព័រនេះសម្រាប់តែ Administrator ប៉ុណ្ណោះ!");
+      next({ name: 'Dashboard' });
+      return;
+    }
   }
+
+  next();
 });
 
 export default router

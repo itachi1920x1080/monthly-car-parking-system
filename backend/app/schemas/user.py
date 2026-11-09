@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, EmailStr
 from app.models.user import RoleEnum
 
@@ -14,7 +15,7 @@ class UserCreate(UserBase):
 # ទិន្នន័យដែល Backend បញ្ជូនទៅឲ្យ Frontend វិញ (មិនបង្ហាញ Password ទេ)
 class UserResponse(UserBase):
     id: int
-    role: RoleEnum
+    role: str
     is_active: bool
 
     model_config = {"from_attributes": True}
@@ -23,3 +24,5 @@ class UserResponse(UserBase):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    role: Optional[str] = None
+    username: Optional[str] = None

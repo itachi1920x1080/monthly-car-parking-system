@@ -36,4 +36,9 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     access_token = create_access_token(data={"sub": user.username, "role": role_value})
     
     # 4. បញ្ជូន Token ទៅឲ្យ Frontend
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": role_value,
+        "username": user.username
+    }

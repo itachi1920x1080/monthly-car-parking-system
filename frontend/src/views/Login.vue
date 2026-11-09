@@ -40,8 +40,12 @@ const handleLogin = async () => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
     
+    const role = (response.data.role || (selectedRole.value === 'Administrator' ? 'admin' : selectedRole.value === 'Cashier' ? 'cashier' : 'customer')).toLowerCase();
+    const name = response.data.username || username.value;
+
     localStorage.setItem('token', response.data.access_token);
-    localStorage.setItem('user_role', selectedRole.value);
+    localStorage.setItem('user_role', role);
+    localStorage.setItem('user_name', name);
     router.push('/dashboard'); 
   } catch (error) {
     if (error.response && error.response.data && error.response.data.detail) {

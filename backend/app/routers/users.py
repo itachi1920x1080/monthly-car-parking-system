@@ -29,7 +29,7 @@ def create_user(
     """បង្កើតគណនីថ្មី (សម្រាប់តែ Admin ប៉ុណ្ណោះដែលអាចបង្កើតបាន)"""
     
     # 1. ពិនិត្យមើលថាតើអ្នកដែលកំពុងហៅ API នេះជា Admin ដែរឬទេ
-    if current_user.role != RoleEnum.ADMIN:
+    if str(current_user.role).lower() != RoleEnum.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="គ្មានសិទ្ធិ! មានតែ Admin ប៉ុណ្ណោះដែលអាចបង្កើតគណនីថ្មីបាន។"

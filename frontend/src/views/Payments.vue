@@ -85,6 +85,44 @@ const handleCreatePayment = async () => {
   }
 };
 
+// អនុគមន៍ថ្មី សម្រាប់ទាញយករបាយការណ៍ជា Excel (CSV)
+const exportToCSV = () => {
+  if (payments.value.length === 0) {
+    alert("មិនមានទិន្នន័យសម្រាប់ទាញយកទេ!");
+    return;
+  }
+  
+  // ១. បង្កើតក្បាលតារាង (Headers)
+  let csvContent = "វិក្កយបត្រ (ID),លេខអតិថិជន (CUS ID),ឈ្មោះអតិថិជន (Customer Name),ចំនួនទឹកប្រាក់ (USD),កាលបរិច្ឆេទ (Date),ស្ថានភាព (Status)\n";
+  
+  // ២. បញ្ចូលទិន្នន័យម្តងមួយជួរៗ
+  payments.value.forEach(pay => {
+    const id = `INV-${pay.id.toString().padStart(4, '0')}`;
+    const cusId = pay.customer_id;
+    const cusName = getCustomerName(pay.customer_id);
+    const amount = pay.amount.toFixed(2);
+    const date = pay.payment_date ? new Date(pay.payment_date).toLocaleString('en-GB') : '';
+    const status = pay.status;
+    
+    // តភ្ជាប់ជាទម្រង់ CSV
+    csvContent += `${id},${cusId},"${cusName}",${amount},"${date}",${status}\n`;
+  });
+  
+  // ៣. បង្កើតជា File និងបញ្ជាឲ្យ Download
+  // \uFEFF ជួយឲ្យ Excel ស្គាល់អក្សរខ្មែរ (UTF-8 BOM)
+  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' }); 
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  
+  const today = new Date().toISOString().split('T')[0];
+  link.setAttribute("href", url);
+  link.setAttribute("download", `CarPark_Revenue_Report_${today}.csv`); // ឈ្មោះ File
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 const handleLogout = () => {
   localStorage.removeItem('token');
   router.push('/login');
@@ -164,15 +202,24 @@ onMounted(() => {
       <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-8">
         
         <!-- Breadcrumbs & Actions -->
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h3 class="text-2xl font-bold text-gray-800">Payment Records</h3>
             <p class="text-sm text-gray-500 mt-0.5">Home / Payments</p>
           </div>
-          <button @click="showModal = true" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-secondary transition-all flex items-center gap-2 shadow-md shadow-primary/20">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            + បង្កើតវិក្កយបត្រថ្មី (New Payment)
-          </button>
+          
+          <!-- ប៊ូតុងទាំង ២ (Export CSV & Create Payment) -->
+          <div class="flex items-center gap-3">
+            <button @click="exportToCSV" class="bg-gray-800 text-white px-4 py-2.5 rounded-xl font-medium hover:bg-gray-900 transition-colors shadow-sm flex items-center gap-2 text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+              Export Report (CSV)
+            </button>
+
+            <button @click="showModal = true" class="bg-primary text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-secondary transition-all flex items-center gap-2 shadow-md shadow-primary/20 text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              + បង្កើតវិក្កយបត្រថ្មី (New Payment)
+            </button>
+          </div>
         </div>
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

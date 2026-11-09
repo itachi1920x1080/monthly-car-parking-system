@@ -12,6 +12,14 @@ router = APIRouter(prefix="/users", tags=["Users Management"])
 def read_users_me(current_user: User = Depends(get_current_user)):
     """ទាញយកព័ត៌មាន Profile របស់ User ដែលកំពុងប្រើប្រាស់ Token"""
     return current_user
+
+@router.get("/", response_model=list[UserResponse])
+def get_all_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """ទាញយកបញ្ជី Users ទាំងអស់នៅក្នុងប្រព័ន្ធ"""
+    return db.query(User).all()
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(
     user_in: UserCreate, 

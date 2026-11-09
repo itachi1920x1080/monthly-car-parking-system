@@ -1,10 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import Dashboard from '../views/Dashboard.vue'
+import Users from '../views/Users.vue'
 import Customers from '../views/Customers.vue'
 import Parking from '../views/Parking.vue'
-import Payments from '../views/Payments.vue'
+import ParkingSpaces from '../views/ParkingSpaces.vue'
 import Contracts from '../views/Contracts.vue'
+import Payments from '../views/Payments.vue'
+import Notifications from '../views/Notifications.vue'
+import Reports from '../views/Reports.vue'
+import Settings from '../views/Settings.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,10 +17,15 @@ const router = createRouter({
     { path: '/', redirect: '/login' },
     { path: '/login', name: 'Login', component: Login },
     { path: '/dashboard', name: 'Dashboard', component: Dashboard },
+    { path: '/users', name: 'Users', component: Users },
     { path: '/customers', name: 'Customers', component: Customers },
-    { path: '/parking', name: 'Parking', component: Parking },
+    { path: '/parking', name: 'Parking', component: Parking, alias: '/vehicles' },
+    { path: '/spaces', name: 'ParkingSpaces', component: ParkingSpaces, alias: '/parking-spaces' },
     { path: '/contracts', name: 'Contracts', component: Contracts },
-    { path: '/payments', name: 'Payments', component: Payments }
+    { path: '/payments', name: 'Payments', component: Payments },
+    { path: '/notifications', name: 'Notifications', component: Notifications },
+    { path: '/reports', name: 'Reports', component: Reports },
+    { path: '/settings', name: 'Settings', component: Settings }
   ]
 })
 

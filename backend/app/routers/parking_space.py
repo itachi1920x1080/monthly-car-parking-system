@@ -22,3 +22,4 @@ def create_parking_space(space: ParkingSpaceCreate, db: Session = Depends(get_db
 @router.get("/", response_model=list[ParkingSpace])
 def read_parking_spaces(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return db.query(DBParkingSpace).offset(skip).limit(limit).all()
+

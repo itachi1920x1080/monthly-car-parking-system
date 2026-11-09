@@ -14,3 +14,4 @@ class ParkingSpace(ParkingSpaceBase):
 
     class Config:
         from_attributes = True
+

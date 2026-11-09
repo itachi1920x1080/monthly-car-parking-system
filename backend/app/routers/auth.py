@@ -12,8 +12,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """API សម្រាប់ Login ដើម្បីយក JWT Access Token (អាចប្រើ Username ឬ Email ក៏បាន)"""
     # 1. ស្វែងរក User តាម Username ឬ Email ក្នុង Database
+    clean_username = form_data.username.strip()
     user = db.query(User).filter(
-        (User.username == form_data.username) | (User.email == form_data.username)
+        (User.username == clean_username) | (User.email == clean_username)
     ).first()
     
     # 2. ផ្ទៀងផ្ទាត់ថា User ពិតជាមាន ហើយ Password ត្រឹមត្រូវ

@@ -33,8 +33,8 @@ const handleLogin = async () => {
   errorMsg.value = '';
   try {
     const params = new URLSearchParams();
-    params.append('username', username.value);
-    params.append('password', password.value);
+    params.append('username', username.value.trim());
+    params.append('password', password.value.trim());
 
     const response = await axios.post('http://127.0.0.1:8000/auth/login', params, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -279,6 +279,22 @@ const handleLogin = async () => {
             <span v-if="isLoading">Signing in...</span>
             <span v-else>Sign In as {{ selectedRole }}</span>
           </button>
+
+          <!-- Quick Credentials Guide -->
+          <div class="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-500">
+            <p class="font-bold text-gray-700 mb-1">🔑 គណនីគំរូសម្រាប់ Login (Demo Accounts):</p>
+            <div class="grid grid-cols-3 gap-1.5 text-[11px] text-center mt-2">
+              <button type="button" @click="username='admin'; password='admin123'" class="p-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 font-medium">
+                Admin<br><span class="text-[10px] opacity-75 font-mono">admin123</span>
+              </button>
+              <button type="button" @click="username='cashier'; password='cashier123'" class="p-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 font-medium">
+                Cashier<br><span class="text-[10px] opacity-75 font-mono">cashier123</span>
+              </button>
+              <button type="button" @click="username='customer'; password='customer123'" class="p-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 font-medium">
+                Customer<br><span class="text-[10px] opacity-75 font-mono">customer123</span>
+              </button>
+            </div>
+          </div>
         </form>
 
         <div class="mt-6 pt-4 border-t border-gray-100 text-center">

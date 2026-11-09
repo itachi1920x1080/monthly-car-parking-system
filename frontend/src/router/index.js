@@ -4,6 +4,7 @@ import Dashboard from '../views/Dashboard.vue'
 import Customers from '../views/Customers.vue'
 import Parking from '../views/Parking.vue'
 import Payments from '../views/Payments.vue'
+import Contracts from '../views/Contracts.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -13,6 +14,7 @@ const router = createRouter({
     { path: '/dashboard', name: 'Dashboard', component: Dashboard },
     { path: '/customers', name: 'Customers', component: Customers },
     { path: '/parking', name: 'Parking', component: Parking },
+    { path: '/contracts', name: 'Contracts', component: Contracts },
     { path: '/payments', name: 'Payments', component: Payments }
   ]
 })
